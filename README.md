@@ -1,0 +1,2 @@
+# ffmpeg_encode_script
+フォルダ内のファイルをまとめてffmpegで変換するスクリプト
