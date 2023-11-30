@@ -118,10 +118,13 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
         input_bitrate = get_bitrate(ffmpeg, input_file)
         output_file = os.path.join(output_dir, os.path.basename(input_file))
         encode_video(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite)
-    if delete:
-        print('元ファイルを削除中...')
-        for input_file in input_files:
+        if delete:
+            print('元ファイルを削除中...')
             os.remove(input_file)
+    # if delete:
+    #     print('元ファイルを削除中...')
+    #     for input_file in input_files:
+    #         os.remove(input_file)
     print('エンコードが完了しました。')
 
 if __name__ == "__main__":
