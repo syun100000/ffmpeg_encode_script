@@ -1,0 +1,8 @@
+{
+    "input_dir": "/path/to/input",
+    "output_dir": "/path/to/output",
+    "quality": "high",
+    "resolution": "None",
+    "overwrite": false,
+    "delete": true
+}
