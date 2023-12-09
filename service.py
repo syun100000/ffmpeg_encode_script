@@ -6,9 +6,13 @@ import argparse
 import threading
 import time
 import json
+# 内部スレッド数の定義
+SCRIPT_THREAD_COUNT = 2
 # エンコード中および完了したファイル数を追跡する変数を追加
 encoding_count = 0
 completed_count = 0
+
+threads = []  # スレッドを格納するためのリスト
 
 def load_config(config_file):
     with open(config_file, 'r', encoding='utf-8') as file:
@@ -41,9 +45,11 @@ def get_video_filter(resolution):
     return filters.get(resolution)
 
 def show_progress():
-    global encoding_count, completed_count
+    global encoding_count, completed_count, threads
     while encoding_count > completed_count:
         print(f'進捗状況: {completed_count}/{encoding_count} ファイルが完了しました。')
+        print(f'残り: {encoding_count - completed_count} ファイル')
+        print("スレッド数: " + int(threading.active_count())-SCRIPT_THREAD_COUNT+"個")
         time.sleep(5)
         
 def determine_encoding_parameters(input_bitrate, quality, input_file):
@@ -119,6 +125,7 @@ def get_args():
     return content
 def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=True, overwrite=False):
     global encoding_count
+    global threads
     #もし関数事態に引数がない場合はコマンドライン引数を取得（コマンド来にも引数がない場合はデフォルト値を使用）
     if input_dir==None:
         args = get_args()
@@ -129,8 +136,7 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
         delete = args['delete']
         overwrite = args['overwrite']
     
-    max_threads = 4 #最大スレッド数(使用しているGPUによって変更する)
-    threads = []  # スレッドを格納するためのリスト
+    max_threads = 6 #最大スレッド数(使用しているGPUによって変更する)
     ffmpeg = get_ffmpeg_command()
     input_files = [os.path.join(input_dir, file_name) for file_name in os.listdir(input_dir)]
     input_files = [file_name for file_name in input_files if os.path.isfile(file_name) and file_name.endswith(('.mp4', '.ts'))]
@@ -185,15 +191,6 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
                 break
             else:
                 time.sleep(1)  # アクティブなスレッドの数が最大に達している場合、少し待機
-        if delete:
-            print('元ファイルを削除中...')
-            # エンコード先に同じ名前のファイルがあるか確認 元ファイルが1MB以上の場合のみ削除
-            if os.path.exists(output_file) and os.path.getsize(output_file) > 1000000:
-                # 元ファイルを削除
-                os.remove(input_file)
-            else:
-                print('元ファイルの削除を中止しました。')
-                print("エンコードに失敗している可能性があります。")
     # すべてのスレッドが終了するのを待つ
     for thread in threads:
         thread.join()
@@ -202,7 +199,13 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
     # if delete:
     #     print('元ファイルを削除中...')
     #     for input_file in input_files:
-    #         os.remove(input_file)
+    #         os.remove(input_file).
+    if delete:
+        print('元ファイルを削除中...')
+        for input_file in input_files:
+            os.remove(input_file)
+            
+            
     print('エンコードが完了しました。')
 
 if __name__ == "__main__":
