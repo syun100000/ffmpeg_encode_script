@@ -60,7 +60,7 @@ def determine_encoding_parameters(input_bitrate, quality, input_file):
         'high': (ts_factor * 2.5, 'each'),
         'super': (2, 'each')
     }
-    factor, b_ref_mode = quality_settings.get(quality, (2, 'middle'))
+    factor, b_ref_mode = quality_settings.get(quality, (2, 'each'))
     return input_bitrate / factor, b_ref_mode
 
 def encode_video(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite=False, codec=None):
