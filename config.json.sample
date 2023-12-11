@@ -4,5 +4,6 @@
     "quality": "high",
     "resolution": "None",
     "overwrite": false,
-    "delete": true
+    "delete": true,
+    "codec": "libx265"
 }

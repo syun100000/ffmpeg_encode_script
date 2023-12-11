@@ -63,7 +63,7 @@ def determine_encoding_parameters(input_bitrate, quality, input_file):
     factor, b_ref_mode = quality_settings.get(quality, (2, 'middle'))
     return input_bitrate / factor, b_ref_mode
 
-def encode_video(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite=False):
+def encode_video(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite=False, codec=None):
     global completed_count
     if os.path.exists(output_file) and not overwrite:
         print(f'出力ファイルが既に存在します: {output_file}')
@@ -73,7 +73,7 @@ def encode_video(ffmpeg, input_file, output_file, input_bitrate, quality, resolu
     output_bitrate, b_ref_mode = determine_encoding_parameters(input_bitrate, quality, input_file)
     video_filter = get_video_filter(resolution)
 
-    args = [ffmpeg, '-i', input_file, '-c:v', 'hevc_nvenc', '-b:v', f'{output_bitrate}k', 
+    args = [ffmpeg, '-i', input_file, '-c:v', codec, '-b:v', f'{output_bitrate}k', 
             '-b_ref_mode', b_ref_mode, '-f', 'mp4', '-tag:v', 'hvc1','-y']
 
     if video_filter:
@@ -97,7 +97,8 @@ def get_args():
             'quality': 'high',
             'resolution': 'None',
             'overwrite': False,
-            'delete': True
+            'delete': True,
+            'codec': 'hevc_nvenc'
         }
     input_dir = config['input_dir']
     output_dir = config['output_dir']
@@ -107,6 +108,7 @@ def get_args():
         resolution = None
     overwrite = config['overwrite']
     delete = config['delete']
+    codec = config['codec']
     parser = argparse.ArgumentParser(description='動画ファイルのエンコードスクリプト')
     parser.add_argument('-i', '--input_dir', help='入力ディレクトリパス',default = input_dir)
     parser.add_argument('-o', '--output_dir', default=output_dir, help='出力ディレクトリパス')
@@ -115,6 +117,7 @@ def get_args():
     parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0.0')
     parser.add_argument('-w','--overwrite', action='store_true', help='出力先に同じ名前のファイルがある場合既存のファイルを上書きする', default=overwrite)
     parser.add_argument('-d', '--delete', action='store_true', help='エンコード後に元ファイルを削除する', default=delete)
+    parser.add_argument('-c', '--codec', help='使用するコーデック', default=codec)
     args = parser.parse_args()
     content['input_dir'] = args.input_dir
     content['output_dir'] = args.output_dir
@@ -122,11 +125,12 @@ def get_args():
     content['resolution'] = args.resolution
     content['overwrite'] = args.overwrite
     content['delete'] = args.delete
+    content['codec'] = args.codec
     return content
-def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=True, overwrite=False):
+def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=True, overwrite=False, codec=None):
     global encoding_count
     global threads
-    #もし関数事態に引数がない場合はコマンドライン引数を取得（コマンド来にも引数がない場合はデフォルト値を使用）
+    #もし関数事態に引数がない場合はコマンドライン引数を取得（コマンドにも引数がない場合はデフォルト値を使用）
     if input_dir==None:
         args = get_args()
         input_dir = args['input_dir']
@@ -135,7 +139,7 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
         resolution = args['resolution']
         delete = args['delete']
         overwrite = args['overwrite']
-    
+        codec = args['codec']
     max_threads = 6 #最大スレッド数(使用しているGPUによって変更する)
     ffmpeg = get_ffmpeg_command()
     input_files = [os.path.join(input_dir, file_name) for file_name in os.listdir(input_dir)]
@@ -150,7 +154,7 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
         print("解像度: " + resolution)
     print("元ファイル削除: " + str(delete))
     print('入力ファイル: ')
-    
+    print("コーデック: " + codec)
     #入力ファイル表示とエンコードリスト作成
     encode_list = []
     for input_file in input_files:
@@ -185,7 +189,7 @@ def main(input_dir=None, output_dir=None, quality=None, resolution=None, delete=
         #スレッド処理
         while True:
             if threading.active_count() < max_threads:
-                thread = threading.Thread(target=encode_video, args=(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite))
+                thread = threading.Thread(target=encode_video, args=(ffmpeg, input_file, output_file, input_bitrate, quality, resolution, overwrite, codec))
                 thread.start()
                 threads.append(thread)  # スレッドをリストに追加
                 break
